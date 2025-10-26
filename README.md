@@ -1,5 +1,10 @@
 # Solution 1: Simple Tezos Delegation Indexer And Data API
 
+## Requirements
+
+- Go 1.23 or above
+- PostgreSQL
+
 ## Build
 
 ```bash
@@ -48,5 +53,58 @@ Indexes:
 
 # Query table
 SELECT * FROM delegations ORDER BY timestamp DESC LIMIT 10;
+\q
+```
+
+## Usage
+
+### Start Indexer
+
+```bash
+# Terminal 1: Start indexing delegations (runs every 60s)
+export DB_URL="postgresql://localhost/solution1"
+./bin/solution1 index
+# OR if installed via go install:
+delegated index
+```
+
+### Start API Server
+
+```bash
+# Terminal 2: Start the API server
+export DB_URL="postgresql://localhost/solution1"
+./bin/solution1 serve
+# OR if installed via go install:
+delegated serve
+```
+
+### Query API
+
+```bash
+# Get all delegations
+curl http://localhost:8080/xtz/delegations | jq
+
+# Filter by year
+curl http://localhost:8080/xtz/delegations?year=2022 | jq
+```
+
+**Example Response:**
+```json
+{
+  "data": [
+    {
+      "timestamp": "2025-10-26T17:17:52Z",
+      "amount": "161512757",
+      "delegator": "tz1cAuZvhNgybyXdu4x2263CNjaFqHKdd8eo",
+      "level": "10674288"
+    },
+    {
+      "timestamp": "2025-10-26T17:03:08Z",
+      "amount": "1287400959",
+      "delegator": "tz1QMwsi5onCV9yR2VJsSCRBDsrSfzrViMss",
+      "level": "10674179"
+    }
+  ]
+}
 ```
 
