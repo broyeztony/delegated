@@ -46,7 +46,7 @@ func initConfig() {
 
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".solution1")
+		viper.SetConfigName(".delegated")
 	}
 
 	viper.AutomaticEnv()
