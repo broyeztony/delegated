@@ -21,7 +21,7 @@ type DelegationResponse struct {
 func GetDelegations(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rows, err := db.Query(c.Request.Context(),
-			"SELECT id, delegator, timestamp, amount, level FROM delegations ORDER BY timestamp DESC")
+			"SELECT id, delegator, timestamp, amount, level FROM delegations ORDER BY id DESC")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

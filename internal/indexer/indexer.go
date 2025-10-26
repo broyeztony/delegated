@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/broyeztony/delegated/internal/db"
 	"github.com/broyeztony/delegated/internal/models"
@@ -83,12 +84,53 @@ func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
 	return &delegations[0], nil
 }
 
+func (i *Indexer) fetchNewDelegations(ctx context.Context, cursor int64) ([]models.Delegation, error) {
+	response, err := http.Get(i.tzktURL + "?id.gt=" + strconv.FormatInt(cursor, 10) + "&limit=100&sort.asc=id")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get new delegations: %w", err)
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var delegations []models.Delegation
+	err = json.Unmarshal(body, &delegations)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+
+	return delegations, nil
+}
+
 // Poll fetches new delegations from TzKT and inserts them into the database
 func (i *Indexer) Poll(ctx context.Context) error {
 	log.Println("Polling for new delegations...")
-	// TODO: Query TzKT API with id.gt=<cursor>&limit=100&sort.asc=id
-	// TODO: Parse JSON response
-	// TODO: Insert delegations using db.InsertDelegations
-	// TODO: Update cursor to max id from batch
+
+	newDelegations, err := i.fetchNewDelegations(ctx, i.cursor)
+	if err != nil {
+		return fmt.Errorf("failed to fetch new delegations: %w", err)
+	}
+
+	if len(newDelegations) == 0 {
+		log.Println("No new delegations found")
+		return nil
+	}
+
+	log.Println("Found", len(newDelegations), "new delegations")
+
+	if err := db.BulkInsertDelegations(ctx, i.pool, newDelegations); err != nil {
+		return fmt.Errorf("failed to insert new delegations: %w", err)
+	}
+
+	log.Println("Inserted", len(newDelegations), "new delegations into database")
+
+	// Update cursor only after successful insert
+	i.cursor = newDelegations[len(newDelegations)-1].ID
+	log.Printf("Updated cursor to: %d\n", i.cursor)
+
 	return nil
 }
