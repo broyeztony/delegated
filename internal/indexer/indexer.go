@@ -58,11 +58,11 @@ func (i *Indexer) Initialize(ctx context.Context) error {
 	return nil
 }
 
-// fetchLatestDelegation fetches the most recent delegation from TzKT
-func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
-	response, err := http.Get(i.tzktURL + "?limit=1&sort.desc=id")
+// fetchDelegations fetches delegations from TzKT with given query parameters
+func (i *Indexer) fetchDelegations(queryParams string) ([]models.Delegation, error) {
+	response, err := http.Get(i.tzktURL + queryParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest delegation: %w", err)
+		return nil, fmt.Errorf("failed to fetch delegations: %w", err)
 	}
 	defer response.Body.Close()
 
@@ -74,7 +74,17 @@ func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
 	var delegations []models.Delegation
 	err = json.Unmarshal(body, &delegations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return delegations, nil
+}
+
+// fetchLatestDelegation fetches the most recent delegation from TzKT
+func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
+	delegations, err := i.fetchDelegations("?limit=1&sort.desc=id")
+	if err != nil {
+		return nil, err
 	}
 
 	if len(delegations) == 0 {
@@ -85,25 +95,8 @@ func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
 }
 
 func (i *Indexer) fetchNewDelegations(ctx context.Context, cursor int64) ([]models.Delegation, error) {
-	response, err := http.Get(i.tzktURL + "?id.gt=" + strconv.FormatInt(cursor, 10) + "&limit=100&sort.asc=id")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get new delegations: %w", err)
-	}
-	defer response.Body.Close()
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var delegations []models.Delegation
-	err = json.Unmarshal(body, &delegations)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
-	}
-
-	return delegations, nil
+	query := "?id.gt=" + strconv.FormatInt(cursor, 10) + "&limit=100&sort.asc=id"
+	return i.fetchDelegations(query)
 }
 
 // Poll fetches new delegations from TzKT and inserts them into the database
