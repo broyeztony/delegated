@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,10 +19,45 @@ type DelegationResponse struct {
 	Level     string `json:"level"`
 }
 
+// validateYear validates the year parameter
+func validateYear(yearParam string) (int, error) {
+	if yearParam == "" {
+		return 0, nil // No year filter
+	}
+
+	year, err := strconv.Atoi(yearParam)
+	if err != nil {
+		return 0, fmt.Errorf("year must be a number")
+	}
+
+	if year < 2000 || year > 2100 {
+		return 0, fmt.Errorf("year must be between 2000-2100")
+	}
+
+	return year, nil
+}
+
 func GetDelegations(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		rows, err := db.Query(c.Request.Context(),
-			"SELECT id, delegator, timestamp, amount, level FROM delegations ORDER BY id DESC")
+		// Get optional year parameter
+		yearParam := c.Query("year")
+
+		query := "SELECT id, delegator, timestamp, amount, level FROM delegations"
+		args := []interface{}{}
+
+		if yearParam != "" {
+			year, err := validateYear(yearParam)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			query += " WHERE EXTRACT(YEAR FROM timestamp) = $1"
+			args = append(args, year)
+		}
+
+		query += " ORDER BY timestamp DESC"
+
+		rows, err := db.Query(c.Request.Context(), query, args...)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
