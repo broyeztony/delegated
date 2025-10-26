@@ -1,4 +1,4 @@
-# Solution 1: Simple Tezos Delegation Indexer And Data API
+# Delegated: Simple Tezos Delegation Indexer And Data API
 
 ## Requirements
 
