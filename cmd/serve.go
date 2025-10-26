@@ -1,9 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/broyeztony/delegated/internal/api"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +19,21 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		log.Println("Serve command started")
-		fmt.Println("TODO: Implement API server")
+
+		dbpool, err := pgxpool.New(context.Background(), os.Getenv("DB_URL"))
+		if err != nil {
+			return fmt.Errorf("unable to create connection pool: %w", err)
+		}
+		defer dbpool.Close()
+
+		gin.SetMode(gin.ReleaseMode)
+		r := gin.Default()
+		r.GET("/xtz/delegations", api.GetDelegations(dbpool))
+
+		log.Println("Server starting on :8080")
+		if err := r.Run(":8080"); err != nil {
+			return fmt.Errorf("server failed: %w", err)
+		}
 
 		return nil
 	},
