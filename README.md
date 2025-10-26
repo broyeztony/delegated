@@ -1,4 +1,4 @@
-# Solution 1: Simple Tezos Delegation Indexer And Data API
+# Delegated: Simple Tezos Delegation Indexer And Data API
 
 ## Requirements
 
@@ -9,9 +9,9 @@
 
 ```bash
 # Option 1: Build to bin folder
-go build -o bin/solution1
+go build -o bin/delegated
 
-# Option 2: Install to GOPATH/bin (invoke as 'delegated')
+# Option 2: Install to GOPATH/bin
 go install
 ```
 
@@ -19,20 +19,20 @@ go install
 
 ```bash
 # Set database connection URL
-export DB_URL="postgresql://localhost/solution1"
+export DB_URL="postgresql://localhost/delegated"
 
 # Create database
-createdb solution1
+createdb delegated
 
 # Load schema
-psql solution1 < schema.sql
+psql delegated < schema.sql
 ```
 
 ## Verify
 
 ```bash
 # Connect to database
-psql solution1
+psql delegated
 
 # Check table structure
 \d delegations
@@ -62,18 +62,30 @@ SELECT * FROM delegations ORDER BY timestamp DESC LIMIT 10;
 
 ```bash
 # Terminal 1: Start indexing delegations (runs every 60s)
-export DB_URL="postgresql://localhost/solution1"
-./bin/solution1 index
+export DB_URL="postgresql://localhost/delegated"
+./bin/delegated index
 # OR if installed via go install:
 delegated index
 ```
+
+### Backfill Historical Data
+
+```bash
+# Run backfill to populate historical delegations (requires delegations table to have data)
+export DB_URL="postgresql://localhost/delegated"
+./bin/delegated backfill
+# OR if installed via go install:
+delegated backfill
+```
+
+**Note:** The backfill command requires the delegations table to have at least one record (run `index` first). It fetches historical delegations going back to the earliest delegation in June 2018 and stores them in the `delegations` table using COPY protocol for performance.
 
 ### Start API Server
 
 ```bash
 # Terminal 2: Start the API server
-export DB_URL="postgresql://localhost/solution1"
-./bin/solution1 serve
+export DB_URL="postgresql://localhost/delegated"
+./bin/delegated serve
 # OR if installed via go install:
 delegated serve
 ```

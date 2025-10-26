@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/broyeztony/delegated/internal/db"
 	"github.com/broyeztony/delegated/internal/models"
@@ -97,6 +98,56 @@ func (i *Indexer) fetchLatestDelegation() (*models.Delegation, error) {
 func (i *Indexer) fetchNewDelegations(ctx context.Context, cursor int64) ([]models.Delegation, error) {
 	query := "?id.gt=" + strconv.FormatInt(cursor, 10) + "&limit=100&sort.asc=id"
 	return i.fetchDelegations(query)
+}
+
+// FetchNewDelegations is a public method for fetching delegations with a specific cursor (used by backfill)
+func (i *Indexer) FetchNewDelegations(ctx context.Context, cursor int64) ([]models.Delegation, error) {
+	// Use id.lt to go backward in time (older records have smaller IDs)
+	// Sort desc to get the most recent records within the range
+	query := "?id.lt=" + strconv.FormatInt(cursor, 10) + "&limit=10000&sort.desc=id"
+	return i.fetchDelegations(query)
+}
+
+// Backfill fetches historical delegations going backward from the given cursor and inserts directly into delegations using COPY protocol
+func (i *Indexer) Backfill(ctx context.Context, startCursor int64) (totalRecords int, totalBatches int, err error) {
+	const firstDelegationID = 1_098_907_648
+	cursor := startCursor
+
+	for {
+		log.Printf("Fetching batch %d (cursor: %d)\n", totalBatches+1, cursor)
+
+		delegations, err := i.FetchNewDelegations(ctx, cursor)
+		if err != nil {
+			return totalRecords, totalBatches, fmt.Errorf("failed to fetch: %w", err)
+		}
+
+		if len(delegations) == 0 {
+			log.Println("No more delegations found. Backfill complete!")
+			break
+		}
+
+		insertStart := time.Now()
+		if err := db.CopyInsertDelegations(ctx, i.pool, delegations); err != nil {
+			return totalRecords, totalBatches, fmt.Errorf("failed to copy to staging: %w", err)
+		}
+		insertDuration := time.Since(insertStart)
+
+		totalBatches++
+		totalRecords += len(delegations)
+		log.Printf("Inserted %d records in %v (total: %d records in %d batches)\n",
+			len(delegations), insertDuration, totalRecords, totalBatches)
+
+		cursor = delegations[len(delegations)-1].ID
+
+		if cursor <= firstDelegationID {
+			log.Println("Reached first delegation. Backfill complete!")
+			break
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return totalRecords, totalBatches, nil
 }
 
 // Poll fetches new delegations from TzKT and inserts them into the database
