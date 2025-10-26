@@ -14,7 +14,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "solution1",
+	Use:   "delegated",
 	Short: "Tezos delegation indexer and API server",
 	Long:  `A simple service to index and serve Tezos delegation data.`,
 }

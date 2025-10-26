@@ -15,6 +15,12 @@ func GetMaxID(ctx context.Context, pool *pgxpool.Pool) (count int64, maxID int64
 	return
 }
 
+// GetMinID returns the count and min id from the delegations table
+func GetMinID(ctx context.Context, pool *pgxpool.Pool) (count int64, minID int64, err error) {
+	err = pool.QueryRow(ctx, "SELECT COUNT(*), COALESCE(MIN(id), 0) FROM delegations").Scan(&count, &minID)
+	return
+}
+
 // BulkInsertDelegations inserts delegations with ON CONFLICT handling using bulk insert
 func BulkInsertDelegations(ctx context.Context, pool *pgxpool.Pool, delegations []models.Delegation) error {
 	if len(delegations) == 0 {
@@ -62,4 +68,27 @@ func BulkInsertDelegations(ctx context.Context, pool *pgxpool.Pool, delegations 
 
 	// Commit the transaction
 	return tx.Commit(ctx)
+}
+
+// CopyInsertDelegations uses COPY protocol for fast bulk insertion directly into delegations table
+func CopyInsertDelegations(ctx context.Context, pool *pgxpool.Pool, delegations []models.Delegation) error {
+	if len(delegations) == 0 {
+		return nil
+	}
+
+	// Build rows data for COPY
+	rows := make([][]interface{}, len(delegations))
+	for i, d := range delegations {
+		rows[i] = []interface{}{d.ID, d.Delegator, d.Timestamp, d.Amount, d.Level}
+	}
+
+	// Use COPY FROM to insert directly into delegations table
+	_, err := pool.CopyFrom(
+		ctx,
+		pgx.Identifier{"delegations"},
+		[]string{"id", "delegator", "timestamp", "amount", "level"},
+		pgx.CopyFromRows(rows),
+	)
+
+	return err
 }
