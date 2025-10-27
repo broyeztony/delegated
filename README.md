@@ -139,14 +139,21 @@ I reviewed the API spec at https://api.tzkt.io/#operation/Operations_GetDelegati
 
  ### Live indexing
 
- Delegations are associated with a monotonically increasing `id` field, which belongs to the sortable fields set. We use this field to fetch newer (and older) delegations.
- The number of new delegations returned for each poll is relatively small. We insert them in database (Postgresql) using a rollable bulk insert transaction.
+ Delegations are associated with a monotonically increasing `id` field, which belongs to the sortable fields set. 
+ We use this field to fetch newer (and older) delegations.
+ 
+ The number of new delegations returned for each poll is relatively small. 
+ We insert them in database (Postgresql) using a rollable bulk insert transaction.
+ 
  If that transaction succeed, we update the in-memory `cursor` value which is the highest `id` we just inserted. 
+ 
  The live indexing is resilient. If an error occurs, it can retry. If the app is terminated, it can be resumed later and catch up.
 
 ### Backfilling
 
-We fetch historical delegations by the maximum batch size permitted by the API (limit=10000) using the `id` field to work backward from the oldest record in our local database. We continue until the API returns zero records.
+We fetch historical delegations by the maximum batch size permitted by the API (limit=10000) using the `id` field to work backward from the oldest record already present in our local database down to the oldest delegations returned by the Tezos API. 
+
+We continue until the API returns zero records.
 
 #### Performance Optimization: Direct COPY Protocol
 
