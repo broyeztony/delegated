@@ -110,7 +110,6 @@ func (i *Indexer) FetchNewDelegations(ctx context.Context, cursor int64) ([]mode
 
 // Backfill fetches historical delegations going backward from the given cursor and inserts directly into delegations using COPY protocol
 func (i *Indexer) Backfill(ctx context.Context, startCursor int64) (totalRecords int, totalBatches int, err error) {
-	const firstDelegationID = 1_098_907_648
 	cursor := startCursor
 
 	for {
@@ -128,7 +127,7 @@ func (i *Indexer) Backfill(ctx context.Context, startCursor int64) (totalRecords
 
 		insertStart := time.Now()
 		if err := db.CopyInsertDelegations(ctx, i.pool, delegations); err != nil {
-			return totalRecords, totalBatches, fmt.Errorf("failed to copy to staging: %w", err)
+			return totalRecords, totalBatches, fmt.Errorf("failed to copy: %w", err)
 		}
 		insertDuration := time.Since(insertStart)
 
@@ -138,11 +137,6 @@ func (i *Indexer) Backfill(ctx context.Context, startCursor int64) (totalRecords
 			len(delegations), insertDuration, totalRecords, totalBatches)
 
 		cursor = delegations[len(delegations)-1].ID
-
-		if cursor <= firstDelegationID {
-			log.Println("Reached first delegation. Backfill complete!")
-			break
-		}
 
 		time.Sleep(100 * time.Millisecond)
 	}
