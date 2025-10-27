@@ -174,10 +174,10 @@ Result: 0 empty strings, 0 NULL values across 771,332 records.
 
 #### Technical Decision: Direct COPY vs. Staging Table
 
-We chose to COPY directly into the target `delegations` table (which has a PRIMARY KEY constraint on `id` and an index on `timestamp`) rather than using a staging table approach. This decision is justified by:
+We chose to COPY directly into the target `delegations` table (which has a PRIMARY KEY constraint on `id` and an index on `timestamp`) rather than using a no-index staging table approach. This decision is justified by:
 
 1. **Data Quality**: After testing 771,332 records, we found zero duplicates or inconsistencies in the TzKT API data
-2. **Performance**: Constraints don't significantly impact COPY performance - we still achieve 18k+ records/sec
+2. **Performance**: Table constraints impact COPY performance but for this dataset size and exercise scope, the performance is acceptable since we still achieve 18k+ records/sec
 3. **Simplicity**: Eliminates staging-to-target transfer step and reduces complexity
 
 **Trade-off**: If a duplicate somehow appears, the entire 10k records batch fails. However, since we verified no duplicates exist in the source data over 771k+ records, the risk is acceptable for the significant performance gains, in the context of a tech assignment, executed on the local machine.
