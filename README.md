@@ -146,7 +146,7 @@ I reviewed the API spec at https://api.tzkt.io/#operation/Operations_GetDelegati
 
 ### Backfilling
 
-We fetch historical delegations by the maximum batch size permitted by the API (limit=10,000) using the `id` field to work backward from the oldest record in our local database. We continue until the API returns zero records.
+We fetch historical delegations by the maximum batch size permitted by the API (limit=10000) using the `id` field to work backward from the oldest record in our local database. We continue until the API returns zero records.
 
 #### Performance Optimization: Direct COPY Protocol
 
