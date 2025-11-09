@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	pollingInterval int
+)
+
 var indexCmd = &cobra.Command{
 	Use:   "index",
 	Short: "Start indexing delegations",
@@ -36,7 +40,7 @@ var indexCmd = &cobra.Command{
 		}
 
 		// Start polling loop (every 60s)
-		ticker := time.NewTicker(60 * time.Second)
+		ticker := time.NewTicker(time.Duration(pollingInterval) * time.Second)
 		defer ticker.Stop()
 
 		// Initial poll
@@ -56,4 +60,5 @@ var indexCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(indexCmd)
+	indexCmd.Flags().IntVarP(&pollingInterval, "interval", "i", 60, "Polling interval in seconds")
 }
