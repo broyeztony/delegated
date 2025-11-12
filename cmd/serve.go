@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/broyeztony/delegated/internal/api"
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,14 @@ var serveCmd = &cobra.Command{
 
 		log.Println("Serve command started")
 
-		dbpool, err := pgxpool.New(context.Background(), os.Getenv("DB_URL"))
+		// Get database connection string
+		connStr, err := getDatabaseURL()
+		if err != nil {
+			return err
+		}
+
+		// Initialize database connection
+		dbpool, err := pgxpool.New(context.Background(), connStr)
 		if err != nil {
 			return fmt.Errorf("unable to create connection pool: %w", err)
 		}

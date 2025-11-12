@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/broyeztony/delegated/internal/indexer"
@@ -23,8 +22,14 @@ var indexCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log.Println("Index command started")
 
+		// Get database connection string
+		connStr, err := getDatabaseURL()
+		if err != nil {
+			return err
+		}
+
 		// Initialize database connection
-		dbpool, err := pgxpool.New(context.Background(), os.Getenv("DB_URL"))
+		dbpool, err := pgxpool.New(context.Background(), connStr)
 		if err != nil {
 			return fmt.Errorf("unable to create connection pool: %w", err)
 		}
