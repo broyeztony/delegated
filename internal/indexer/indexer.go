@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -22,9 +23,13 @@ type Indexer struct {
 }
 
 func NewIndexer(pool *pgxpool.Pool) *Indexer {
+
+	// https://api.tzkt.io/v1/operations/delegations
+	tzApiUrl := os.Getenv("TZ_API_URL")
+
 	return &Indexer{
 		pool:    pool,
-		tzktURL: "https://api.tzkt.io/v1/operations/delegations",
+		tzktURL: tzApiUrl,
 	}
 }
 
