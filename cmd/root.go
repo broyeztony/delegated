@@ -55,3 +55,18 @@ func initConfig() {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 }
+
+// getDatabaseURL retrieves the database connection string from flag, env var, or returns error if not set
+func getDatabaseURL() (string, error) {
+	connStr := viper.GetString("db-url")
+
+	if connStr == "" {
+		connStr = os.Getenv("DB_URL")
+	}
+
+	if connStr == "" {
+		return "", fmt.Errorf("database URL is required: set --db-url flag or DB_URL environment variable")
+	}
+
+	return connStr, nil
+}
