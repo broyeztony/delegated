@@ -4,6 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/broyeztony/delegated/internal/api"
 	"github.com/gin-gonic/gin"
@@ -36,11 +41,38 @@ var serveCmd = &cobra.Command{
 		r := gin.Default()
 		r.GET("/xtz/delegations", api.GetDelegations(dbpool))
 
-		log.Println("Server starting on :8080")
-		if err := r.Run(":8080"); err != nil {
-			return fmt.Errorf("server failed: %w", err)
+		// Create HTTP server with graceful shutdown
+		server := &http.Server{
+			Addr:    ":8080",
+			Handler: r,
 		}
 
+		// Channel to listen for interrupt signals
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+		// Start server in a goroutine
+		log.Println("Server starting on :8080")
+		go func() {
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("server error: %v", err)
+			}
+		}()
+
+		// Wait for shutdown signal
+		<-sigChan
+		log.Println("Shutdown signal received, gracefully shutting down...")
+
+		// Create a context with 30-second timeout for graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Shutdown the server
+		if err := server.Shutdown(ctx); err != nil {
+			return fmt.Errorf("server shutdown error: %w", err)
+		}
+
+		log.Println("Server stopped")
 		return nil
 	},
 }
